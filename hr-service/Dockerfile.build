@@ -1,0 +1,23 @@
+FROM mcr.microsoft.com/dotnet/aspnet:3.1 AS base
+WORKDIR /app
+EXPOSE 80
+
+FROM mcr.microsoft.com/dotnet/sdk:3.1 AS build
+WORKDIR /src
+COPY ["Code/sevenseven.Api/sevenseven.Api.csproj", "Code/sevenseven.Api/"]
+COPY ["Code/sevenseven.Business/sevenseven.Business.csproj", "Code/sevenseven.Business/"]
+COPY ["Code/sevenseven.Data/sevenseven.Data.csproj", "Code/sevenseven.Data/"]
+COPY ["Code/sevenseven.Entities/sevenseven.Entities.csproj", "Code/sevenseven.Entities/"]
+COPY ["Code/sevenseven.Test.Api/sevenseven.Test.Api.csproj", "Code/sevenseven.Test.Api/"]
+COPY ["Code/sevenseven.Test.Business/sevenseven.Test.Business.csproj", "Code/sevenseven.Test.Business/"]
+RUN dotnet restore "Code/sevenseven.Api/sevenseven.Api.csproj"
+COPY . .
+WORKDIR "/src/Code/sevenseven.Api"
+RUN dotnet build "sevenseven.Api.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "sevenseven.Api.csproj" -c Release -o /app/publish
+
+WORKDIR /src
+RUN dotnet test --results-directory /testresults --logger "trx;LogFileName=testresults.Api.trx" /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=/testresults/coverage/ /p:MergeWith=/testresults/coverage/coverage.json "Code/sevenseven.Test.Api/sevenseven.Test.Api.csproj"
+RUN dotnet test --results-directory /testresults --logger "trx;LogFileName=testresults.Api.trx" /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=/testresults/coverage/ /p:MergeWith=/testresults/coverage/coverage.json "Code/sevenseven.Test.Business/sevenseven.Test.Business.csproj"
